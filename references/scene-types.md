@@ -142,6 +142,63 @@ type ArticleImageScene = {
 
 **什么时候用**：文章里出现截图、表格、流程图、信息图等任何带文字的图。
 
+## 7. `article-image-stack` —— 多图布局（双联 / 轮播，2026-08-03 新增）
+
+```ts
+type ImageStackSlot = {
+  imageSrc: string;       // staticFile() 路径
+  imageAspect: number;    // PIL 预读
+  caption?: string;       // 单图小标（≤ 14 字）
+  source?: string;        // 单图图源（不传则用 scene.source）
+  appearAt?: number;      // 单图进场时刻（carousel 模式自动按 slideSeconds 算）
+};
+
+type ArticleImageStackScene = {
+  kind: "article-image-stack";
+  start: number;
+  eyebrow: string;
+  title: RichTextPart[];
+  /** "row"  左右双联   - before/after 对比
+   *  "column"  上下双联 - 步骤前后 / 时间线
+   *  "carousel" 轮播    - 同点多图 */
+  layout: "row" | "column" | "carousel";
+  /** 2-4 张图；row/column 必填 2 张，carousel 2-4 张 */
+  images: ImageStackSlot[];
+  /** carousel 每张停留秒数（默认 2.5s） */
+  slideSeconds?: number;
+  /** carousel 切换：crossfade（淡入淡出） / push（推入） / slide（水平滑入） */
+  transition?: "crossfade" | "push" | "slide";
+  /** 全局图源（每个 slot 各自的 source 优先） */
+  source?: string;
+  appearAt?: number;
+  titleAppearAt?: number;
+};
+```
+
+**视觉**：
+
+- `row`：左右等宽双联，gap 28px；每张图占约 (1920-28)/2 = 946px 宽，object-fit: contain
+- `column`：上下双联，gap 24px；每张图占约 (1080-title)/2 ≈ 400px 高
+- `carousel`：单图占满舞台，底部居中 pill 显示 `01/03  caption`；`crossfade` 默认、`push` 从下方推入、`slide` 水平交替滑入
+
+**铁律**：
+- 每张图仍 `object-fit: contain`，永不 `cover`
+- 每个 slot 独立 `imageAspect`，宽高比决定该 slot 的 max-width 还是 max-height
+- `row/column` 模式下两张图同时可见，标题字号降到 56px 留空间
+- `carousel` 模式下 `images.length × slideSeconds + appearAt` 不要超过 scene 时长
+
+**进场节奏**（推荐）：
+- 0.08s eyebrow
+- 0.16s + i*0.2s 第 i 张图淡入（row/column）
+- 0.24s 标题
+- 0.16s + i*slideSeconds 第 i 张图淡入（carousel）
+
+**什么时候用**：
+- 同一景点多张细节图 → carousel
+- before/after 对比截图 → row
+- 步骤前后 / 时间线 → column
+- 不要滥用：单图场景用 `article-image` 即可
+
 ## 数据驱动约定
 
 - `src/demoData.ts` 里的 `scenes` 是唯一真相

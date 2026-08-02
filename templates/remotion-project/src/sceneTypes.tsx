@@ -115,13 +115,52 @@ type ArticleImageScene = {
   captionAppearAt?: number;
 };
 
+// === 新增：article-image-stack 场景（多图布局） =========
+
+type ImageStackSlot = {
+  /** 公众号原文图，相对 staticFile() 路径 */
+  imageSrc: string;
+  /** 图片宽/高，由 PIL 预读 */
+  imageAspect: number;
+  /** 单图小标（可选，2-14 字） */
+  caption?: string;
+  /** 单图图源（可选；不传则用 scene.source） */
+  source?: string;
+  /** 单图进场时刻（场景内相对秒数；carousel 模式由 scene.slideSeconds 自动计算） */
+  appearAt?: number;
+};
+
+type ArticleImageStackScene = {
+  kind: "article-image-stack";
+  start: number;
+  eyebrow: string;
+  title: RichTextPart[];
+  /** 布局：
+   *  - "row"      ：左右双联（适合 before/after、对比截图）
+   *  - "column"   ：上下双联（适合步骤前后、时间线）
+   *  - "carousel" ：轮播（适合同景点多图）
+   */
+  layout: "row" | "column" | "carousel";
+  /** 2-4 张图；row/column 必填 2 张，carousel 2-4 张 */
+  images: ImageStackSlot[];
+  /** carousel 每张停留秒数（默认 2.5s） */
+  slideSeconds?: number;
+  /** carousel 切换：crossfade（淡入淡出） / push（推入） / slide（水平滑入） */
+  transition?: "crossfade" | "push" | "slide";
+  /** 全局图源（每个 slot 各自的 source 优先） */
+  source?: string;
+  appearAt?: number;
+  titleAppearAt?: number;
+};
+
 export type ArticleScene =
   | CoverScene
   | ListScene
   | StatScene
   | CompareScene
   | OutroScene
-  | ArticleImageScene;
+  | ArticleImageScene
+  | ArticleImageStackScene;
 
 // === Props ================================================
 
@@ -459,6 +498,193 @@ const ArticleImageSceneView = ({scene}: {scene: ArticleImageScene}) => {
   );
 };
 
+// === article-image-stack 场景（多图布局） ================
+
+const computeSlotImageSize = (imageAspect: number, containerMaxWidth: string, containerMaxHeight: string): CSSProperties => {
+  // 铁律：object-fit: contain，永不裁切
+  // 宽高比决定 max-width 还是 max-height 优先
+  const isWideImage = imageAspect >= 1.78;
+  return isWideImage
+    ? {maxWidth: containerMaxWidth, maxHeight: containerMaxHeight, width: "auto", height: "auto"}
+    : {maxHeight: containerMaxHeight, maxWidth: containerMaxWidth, width: "auto", height: "auto"};
+};
+
+const ImageStackSlotView = ({
+  slot,
+  containerStyle,
+  source,
+  baseAppearAt,
+  enterDuration = 0.5,
+  enterOffset = 16,
+  showCaption = true,
+}: {
+  slot: ImageStackSlot;
+  containerStyle: CSSProperties;
+  source?: string;
+  /** 基础进场时刻（秒）—— row/column 时用 slot.appearAt 覆盖；carousel 时用 start + i * slide */
+  baseAppearAt: number;
+  enterDuration?: number;
+  enterOffset?: number;
+  showCaption?: boolean;
+}) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const appear = slot.appearAt ?? baseAppearAt;
+  return (
+    <div
+      style={{
+        ...containerStyle,
+        ...enterStyle(frame, fps, appear, enterDuration, enterOffset),
+      }}
+    >
+      <div style={articleImageFrameStyle}>
+        <Img
+          src={staticFile(slot.imageSrc)}
+          style={{
+            ...articleImageImgStyle,
+            ...computeSlotImageSize(slot.imageAspect, "96%", "100%"),
+          }}
+        />
+        {(slot.source || source) ? (
+          <div style={imageSourceBadgeStyle}>
+            {slot.source || source}
+          </div>
+        ) : null}
+      </div>
+      {showCaption && slot.caption ? (
+        <div style={articleImageCaptionStyle}>{slot.caption}</div>
+      ) : null}
+    </div>
+  );
+};
+
+const ArticleImageStackSceneView = ({scene}: {scene: ArticleImageStackScene}) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+
+  const isCarousel = scene.layout === "carousel";
+  const slideSeconds = scene.slideSeconds ?? 2.5;
+  const transition = scene.transition ?? "crossfade";
+
+  // 持续动效：图源标签 6s 呼吸一次
+  const sourceGlow = 0.6 + Math.sin((frame / fps) * (Math.PI / 3)) * 0.4;
+
+  return (
+    <div style={{...sceneContentStyle, ...articleImageStackLayoutStyle}}>
+      <div style={articleImageHeaderStyle}>
+        <Eyebrow style={enterStyle(frame, fps, scene.appearAt ?? 0.08, 0.34, 12)}>
+          {scene.eyebrow}
+        </Eyebrow>
+        <h2
+          style={{
+            ...articleImageStackTitleStyle,
+            ...enterStyle(frame, fps, scene.titleAppearAt ?? 0.24, 0.5, 24),
+          }}
+        >
+          <RichText parts={scene.title} strong />
+        </h2>
+      </div>
+
+      {/* row：左右双联 */}
+      {scene.layout === "row" ? (
+        <div style={articleImageStackRowStyle}>
+          {scene.images.map((slot, i) => (
+            <ImageStackSlotView
+              key={i}
+              slot={slot}
+              containerStyle={articleImageStackRowCellStyle}
+              source={scene.source}
+              baseAppearAt={(scene.appearAt ?? 0.16) + i * 0.2}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {/* column：上下双联 */}
+      {scene.layout === "column" ? (
+        <div style={articleImageStackColumnStyle}>
+          {scene.images.map((slot, i) => (
+            <ImageStackSlotView
+              key={i}
+              slot={slot}
+              containerStyle={articleImageStackColumnCellStyle}
+              source={scene.source}
+              baseAppearAt={(scene.appearAt ?? 0.16) + i * 0.2}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {/* carousel：轮播 */}
+      {isCarousel ? (
+        <div style={articleImageStackCarouselWrapStyle}>
+          {scene.images.map((slot, i) => {
+            const start = (scene.appearAt ?? 0.16) + i * slideSeconds;
+            const end = start + slideSeconds;
+            const enter = progress(frame, start * fps, 0.5 * fps);
+            const exit = progress(frame, end * fps, 0.4 * fps);
+            const opacity = clamp(enter - exit, 0, 1);
+            const isActive = frame >= start * fps && frame < (end + 0.4) * fps;
+
+            if (!isActive) return null;
+
+            // 不同 transition 的位移
+            let transform = "translate(0, 0)";
+            if (transition === "push" && i > 0) {
+              // 推入：从下方推上来
+              const t = enter;
+              transform = `translate(0, ${(1 - t) * 60}px)`;
+            } else if (transition === "slide") {
+              // 水平滑入：第一张从左，第二张从右，交替
+              const t = enter;
+              const xOffset = i % 2 === 0 ? -1 : 1;
+              transform = `translate(${(1 - t) * 60 * xOffset}px, 0)`;
+            }
+
+            return (
+              <div
+                key={i}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity,
+                  transform,
+                }}
+              >
+                <div style={articleImageFrameStyle}>
+                  <Img
+                    src={staticFile(slot.imageSrc)}
+                    style={{
+                      ...articleImageImgStyle,
+                      ...computeSlotImageSize(slot.imageAspect, "88%", "calc(100% - 16px)"),
+                    }}
+                  />
+                  {(slot.source || scene.source) ? (
+                    <div style={{...imageSourceBadgeStyle, opacity: sourceGlow}}>
+                      {slot.source || scene.source}
+                    </div>
+                  ) : null}
+                </div>
+                {slot.caption ? (
+                  <div style={articleImageStackCarouselCaptionStyle}>
+                    <span style={articleImageStackCarouselIndexStyle}>
+                      {String(i + 1).padStart(2, "0")} / {String(scene.images.length).padStart(2, "0")}
+                    </span>
+                    <span style={articleImageStackCarouselTextStyle}>{slot.caption}</span>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 // === SceneRouter ========================================
 
 export const SceneRenderer = ({
@@ -484,6 +710,7 @@ export const SceneRenderer = ({
       {scene.kind === "compare" ? <CompareSceneView scene={scene} /> : null}
       {scene.kind === "outro" ? <OutroSceneView scene={scene} /> : null}
       {scene.kind === "article-image" ? <ArticleImageSceneView scene={scene} /> : null}
+      {scene.kind === "article-image-stack" ? <ArticleImageStackSceneView scene={scene} /> : null}
     </AbsoluteFill>
   );
 };
@@ -844,6 +1071,92 @@ const articleImageCaptionStyle: CSSProperties = {
   fontWeight: 400,
   letterSpacing: 0,
   maxWidth: 1200,
+};
+
+// Article-image-stack（多图布局）
+const articleImageStackLayoutStyle: CSSProperties = {
+  alignItems: "center",
+  justifyContent: "flex-start",
+  textAlign: "center",
+};
+const articleImageStackTitleStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 1500,
+  margin: 0,
+  color: colors.ink,
+  fontSize: 56,
+  fontWeight: 800,
+  lineHeight: 1.2,
+  letterSpacing: 0,
+};
+const articleImageStackRowStyle: CSSProperties = {
+  flex: 1,
+  width: "100%",
+  display: "flex",
+  flexDirection: "row",
+  gap: 28,
+  alignItems: "stretch",
+  minHeight: 0,
+};
+const articleImageStackRowCellStyle: CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  minWidth: 0,
+  minHeight: 0,
+};
+const articleImageStackColumnStyle: CSSProperties = {
+  flex: 1,
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
+  gap: 24,
+  alignItems: "stretch",
+  minHeight: 0,
+};
+const articleImageStackColumnCellStyle: CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 0,
+};
+const articleImageStackCarouselWrapStyle: CSSProperties = {
+  position: "relative",
+  flex: 1,
+  width: "100%",
+  minHeight: 0,
+  overflow: "hidden",
+};
+const articleImageStackCarouselCaptionStyle: CSSProperties = {
+  position: "absolute",
+  left: "50%",
+  bottom: 40,
+  transform: "translateX(-50%)",
+  display: "flex",
+  alignItems: "center",
+  gap: 16,
+  padding: "10px 24px",
+  borderRadius: 100,
+  backgroundColor: "rgba(28,38,54,0.82)",
+  color: colors.white,
+  fontSize: 22,
+  fontWeight: 500,
+  letterSpacing: 0.4,
+  maxWidth: "80%",
+};
+const articleImageStackCarouselIndexStyle: CSSProperties = {
+  fontFamily: fonts.mono,
+  fontSize: 16,
+  color: colors.accent,
+  fontWeight: 600,
+  flex: "none",
+};
+const articleImageStackCarouselTextStyle: CSSProperties = {
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 
 // Caption

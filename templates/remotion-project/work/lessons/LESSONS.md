@@ -33,7 +33,30 @@
 
 ## 后续改进方向
 
-1. **article-image-stack 场景**：当前只有单图版本；多图（左/右双联、上下双联）可以扩展，参考 [scene-types.md 6](../references/scene-types.md) 提到的"未来版本"
-2. **真实文章跑通**：当前只验证了骨架，没有跑通真实公众号 URL（ideaflow API 需要外网）
-3. **音画同步工具**：用 audio-to-subtitles 的 ASR 对齐字幕时，建议写一个 `align_captions.py` 把 SRT 转成 demoData.ts 的 `captions[]` 数组格式
-4. **国际化**：按 user_profile 偏好先不做；如果要做，建议把 `RichText` 抽象成 `<T>` 组件支持多语言 fallback
+1. **真实文章跑通**：当前只验证了骨架，没有跑通真实公众号 URL（ideaflow API 需要外网）
+2. **国际化**：按 user_profile 偏好先不做；如果要做，建议把 `RichText` 抽象成 `<T>` 组件支持多语言 fallback
+
+## 字幕对齐工具（2026-08-03 补完）
+
+✅ `scripts/align_captions.py` 已补完：
+
+- 输入：`work/captions/segments.json`（默认）或 `--srt` 指定的 ASR 对齐 SRT
+- 输出：可直接贴入 `demoData.ts` 的 `captions: [...]` 块 TS 代码
+- 切分：中文标点优先，超 14 字按标点/空格兜底切
+- accent：keyword 大小写不敏感，传 `MiniMax` 也能命中 `minimax` / `MINIMAX`
+- 端到端验证：`test-align-tmp/work/captions/segments.json`（3 段 31.56s）跑通
+
+## article-image-stack 场景（2026-08-03 补完）
+
+✅ `templates/remotion-project/src/sceneTypes.tsx` 加了第 7 种场景：
+
+- 三种布局：`row`（左右双联） / `column`（上下双联） / `carousel`（轮播）
+- 铁律：每张图 `object-fit: contain`，永不裁切（与 article-image 保持一致）
+- 轮播 transition：`crossfade`（淡入淡出） / `push`（推入） / `slide`（水平滑入）
+- typecheck 端到端验证：`test-align-tmp/test-sandbox/` 跑通 `npm run typecheck` 0 错误
+- demoData.ts 加 row + carousel 两个示例场景（共 6 scene）
+
+**适用场景**：
+- `row` —— before/after 对比截图
+- `column` —— 步骤前后 / 时间线
+- `carousel` —— 同景点多细节图（每张 2.5s 默认）

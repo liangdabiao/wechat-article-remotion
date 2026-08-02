@@ -6,7 +6,8 @@ import type {ArticleVideoProps} from "./ArticleVideo";
 //   2. 用运行时 LLM 按 references/beat-checklist.md 拆稿，输出 scenes/captions/chapters
 //   3. 跑 scripts/generate_tts.py 生成 voice.m4a 和 captions_aligned.json
 //      （统一入口：有 MiniMax 凭据走 minimax；没有则自动降级到 edge-tts 免费方案）
-//   4. 把下面 demoProject 替换为真实数据
+//   4. 跑 scripts/align_captions.py 自动把 segments.json 转成下面 captions[] 的 TS 片段
+//   5. 把下面 demoProject 替换为真实数据
 export const demoProject: ArticleVideoProps = {
   title: "__PROJECT_TITLE__",
   fps: 30,
@@ -47,8 +48,35 @@ export const demoProject: ArticleVideoProps = {
       captionAppearAt: 0.5,
     },
     {
-      kind: "list",
+      kind: "article-image-stack",
       start: 10,
+      eyebrow: "对比双联",
+      title: [
+        {text: "左右双联："},
+        {text: "before", tone: "accent"},
+        {text: " / "},
+        {text: "after", tone: "accent"},
+      ],
+      layout: "row",
+      images: [
+        {
+          imageSrc: "assets/article-images/img-02.jpg",
+          imageAspect: 1.5,
+          caption: "改版前",
+        },
+        {
+          imageSrc: "assets/article-images/img-03.jpg",
+          imageAspect: 1.5,
+          caption: "改版后",
+        },
+      ],
+      source: "图源：示例 / 对比章节",
+      appearAt: 0.1,
+      titleAppearAt: 0.2,
+    },
+    {
+      kind: "list",
+      start: 16,
       eyebrow: "关键要点",
       heading: "三大核心",
       items: [
@@ -58,8 +86,37 @@ export const demoProject: ArticleVideoProps = {
       ],
     },
     {
+      kind: "article-image-stack",
+      start: 24,
+      eyebrow: "同点多图",
+      title: [{text: "轮播：3 张相关图"}],
+      layout: "carousel",
+      slideSeconds: 2.5,
+      transition: "crossfade",
+      images: [
+        {
+          imageSrc: "assets/article-images/img-04.jpg",
+          imageAspect: 1.78,
+          caption: "细节一",
+        },
+        {
+          imageSrc: "assets/article-images/img-05.jpg",
+          imageAspect: 1.78,
+          caption: "细节二",
+        },
+        {
+          imageSrc: "assets/article-images/img-06.jpg",
+          imageAspect: 1.78,
+          caption: "细节三",
+        },
+      ],
+      source: "图源：示例 / 细节特写",
+      appearAt: 0.1,
+      titleAppearAt: 0.2,
+    },
+    {
       kind: "outro",
-      start: 18,
+      start: 33,
       eyebrow: "谢谢观看",
       title: "下期见",
       subtitle: "扫码关注公众号，看更多内容。",
@@ -86,9 +143,28 @@ export const demoProject: ArticleVideoProps = {
     },
     {
       start: 10.5,
-      end: 17.0,
+      end: 15.5,
+      parts: [
+        {text: "左右双联："},
+        {text: "before", tone: "accent"},
+        {text: " / "},
+        {text: "after", tone: "accent"},
+      ],
+    },
+    {
+      start: 16.5,
+      end: 23.0,
       parts: [
         {text: "三个核心要点，逐个进场"},
+      ],
+    },
+    {
+      start: 24.5,
+      end: 32.0,
+      parts: [
+        {text: "同点多图："},
+        {text: "carousel", tone: "accent"},
+        {text: " 轮播，2.5s/张"},
       ],
     },
   ],

@@ -191,29 +191,35 @@ Pillow>=10.0
    - 修了哪 3 处文档：模板 README.md:55 / PROJECT_BRIEF.md:14 / demoData.ts:7（全部已修）
    - 同时补了 `scripts/generate_tts_edge_tts.py`（免费方案）+ `scripts/generate_tts.py`（统一入口）+ `requirements.txt` + `scripts/README.md`（脚本使用手册）
 
-2. **补 `scripts/align_captions.py`**
-   - 来源：LESSONS.md 建议
-   - 功能：把 `work/captions/segments.json` 自动转成 `demoData.ts` 的 `captions[]` 数组代码片段
-   - 输入：`work/audio/tts-segments/seg-NN.mp3` + `work/source/tts-script.md`（TTS 稿）
+2. ~~**补 `scripts/align_captions.py`**~~
+   - ✅ **2026-08-03 已完成**：`scripts/align_captions.py` 已补完
+   - 功能：把 `work/captions/segments.json`（或 `--srt` 指定的 SRT）自动转成 `demoData.ts` 的 `captions[]` 数组 TS 代码片段
+   - 特性：keyword accent 大小写不敏感；按中文标点 + 空格切分长段（每段 ≤ 14 字）；可选 `--out` 写文件 + `--print-totals` 统计
+   - 端到端验证：`test-align-tmp/work/captions/segments.json`（3 段 31.56s / 176 字）跑通，输出 `captions-snippet.ts` 可直接贴入 `demoData.ts`
 
 3. ~~**补 `requirements.txt`**~~ ✅ **2026-08-03 已完成**
    - `requests>=2.31,<3.0` / `Pillow>=10.0,<12.0` / `edge-tts>=6.1,<8.0`（注释行，按需取消）
 
 ### 中优先级（可观测性）
 
-4. **package.json 加 `engines` 字段**
+4. ~~**package.json 加 `engines` 字段**~~ ✅ **2026-08-03 已完成**
    ```json
    "engines": {
      "node": ">=20.0.0",
      "npm": ">=10.0.0"
    }
    ```
-
 5. **`SKILL.md` 补"目录结构"小节**（参考 `template README.md`）
 
 ### 低优先级（未来增强）
 
-6. **`article-image-stack` 场景**：多图轮播 / 双联
+6. ~~**`article-image-stack` 场景**：多图轮播 / 双联~~ ✅ **2026-08-03 已完成**
+   - `sceneTypes.tsx` 加 `ArticleImageStackScene` 类型 + View 组件 + 样式 + SceneRouter 注册
+   - 三种布局：`row`（左右双联） / `column`（上下双联） / `carousel`（轮播）
+   - 轮播 transition：`crossfade` / `push` / `slide`
+   - 铁律：每张图 `object-fit: contain` 永不裁切；`imageAspect` 决定 max-width 还是 max-height
+   - 端到端验证：`test-align-tmp/test-sandbox/` 跑 `npm run typecheck` 0 错误
+   - demoData.ts 加 row + carousel 两个示例场景（共 6 scene）
 7. **国际化**：把 `RichText` 抽象成 `<T>` 组件
 8. **Subagent 视觉审核脚本自动化**：当前是手动 prompt 抽帧
 9. **ideaflow 降级方案**：备一个 wechat-article API（ideaflow 无 SLA）
@@ -239,3 +245,32 @@ Pillow>=10.0
 - 新建 `scripts/README.md` —— 三个脚本速查 + 详细用法
 - 修复 4 处文档/脚本不一致：SKILL.md:65、模板 README.md:55、PROJECT_BRIEF.md:14、demoData.ts:7
 - 端到端验证：在 `test-tts-tmp/` 跑通 3 段 TTS，生成 31.56s 配音 + segments.json
+
+### 2026-08-03（v3：补完小尾巴）
+
+- 新建 `scripts/align_captions.py` —— SRT / `segments.json` → `captions[]` TS 代码片段
+   - keyword 大小写不敏感匹配（`MiniMax` ↔ `minimax`）
+   - 中文标点优先切分；超 14 字按标点/空格兜底切；FIFO 顺序保证
+   - 端到端验证：`test-align-tmp/` 3 段 31.56s / 176 字，输出顺序正确
+- 修 `templates/remotion-project/package.json` —— 补 `engines.node>=20 / npm>=10`
+- 修 `SKILL.md` —— 硬规则编号 6 重复 bug 修复（原 6 子项 + 6 共用 → 6/7/8）
+- 同步文档过期项：
+   - README.md: 56 行"字幕对齐工具"标 ✅；193 行"generate_tts.py 不存在"删除；280-298 行补 align_captions 用法
+   - PROJECT_AUDIT.md（本文档）：第 2 项 align_captions 标 ✅，第 4 项 engines 标 ✅
+   - LESSONS.md: 移除"建议补 align_captions"项，改记为已完成
+- 验证 `tsconfig.json` 的 `types: ["node"]` —— Remotion 4.x 自动 inject @remotion/* 类型，**无需手动声明**（保留现状）
+
+### 2026-08-03（v4：article-image-stack 场景）
+
+- `templates/remotion-project/src/sceneTypes.tsx` 加第 7 种场景 `article-image-stack`：
+   - `ImageStackSlot` 子类型 + `ArticleImageStackScene` 类型
+   - `ImageStackSlotView` 子组件（行/列布局复用）+ `ArticleImageStackSceneView` 主组件
+   - 三种布局：`row`（左右双联） / `column`（上下双联） / `carousel`（轮播）
+   - 轮播 transition：`crossfade` / `push` / `slide`
+   - 9 套新样式常量（`articleImageStackLayoutStyle` / `articleImageStackRowStyle` / `articleImageStackCarouselCaptionStyle` 等）
+- `templates/remotion-project/src/demoData.ts` 加 row（before/after）+ carousel（3 张同点多图）两个示例场景，共 6 scene
+- `references/scene-types.md` 加第 7 节 `article-image-stack`（数据模型 + 视觉 + 铁律 + 进场节奏 + 适用场景）
+- `SKILL.md` 第 6 节「6 个场景类型」→「7 个场景类型」表格
+- `README.md`：项目状态 + 场景表 + 动效词汇 + 6 场景表 + 已知问题都同步
+- `templates/remotion-project/work/lessons/LESSONS.md` 移除"建议补 article-image-stack"项，改记为已完成
+- 端到端验证：`test-align-tmp/test-sandbox/` 跑 `npm install` + `npm run typecheck` **0 错误**

@@ -21,7 +21,8 @@
 
 ❯ wechat-article-remotion skill 制作视频： https://mp.weixin.qq.com/s/oWPVUyjW7TtHauynuTjYjw
 
-
+demo例子：
+https://www.bilibili.com/video/BV1LMKJ6cEwb/?vd_source=86926e418c83af75f6850b5546388a79
 
 ## 目录
 
@@ -52,7 +53,7 @@
 | 公共素材库 | ✅ 跨 skill 共享 | 从 `talking-head-remotion/assets/library/` 播种（9 字体 + 7 SFX） |
 | 端到端验证 | ✅ 2 个 demo | `demo-wx-article`（4 张图，88s 视频）、`demo-wx-llm`（27 张图，12 scene） |
 | TTS 工具脚本 | ✅ 完整（2026-08-03 抽离） | `scripts/generate_tts.py`（统一入口）/ `generate_tts_minimax.py`（MiniMax 实现）/ `generate_tts_edge_tts.py`（edge-tts 免费实现） |
-| 字幕对齐工具 | ⚠️ 文档建议未实现 | `scripts/align_captions.py` 在 LESSONS.md 中建议补；当前手动写 `captions[]` |
+| 字幕对齐工具 | ✅ 2026-08-03 新增 | `scripts/align_captions.py` —— SRT/segments.json → `captions[]` TS 代码片段（含 keyword 大小写不敏感） |
 
 > 详细检查结果见 [PROJECT_AUDIT.md](PROJECT_AUDIT.md) 章节末段（与本 README 一同维护）。
 
@@ -70,7 +71,7 @@
 
 ### 场景
 
-6 个场景类型（5 基础 + 1 核心新增）：
+7 个场景类型（5 基础 + 2 核心新增）：
 
 | kind | 用途 | 关键字段 |
 |---|---|---|
@@ -79,7 +80,8 @@
 | `stat` | 数据、金句 | `eyebrow, number, unit, title, metrics[]` |
 | `compare` | 对比、选 A/B | `eyebrow, heading, choices[]` |
 | `outro` | 结尾 CTA | `eyebrow, title, subtitle` |
-| **`article-image`** | **公众号原文图完整展示** | `eyebrow, imageSrc, imageAspect, title, caption?, source?` |
+| **`article-image`** | **公众号原文图完整展示（单图）** | `eyebrow, imageSrc, imageAspect, title, caption?, source?` |
+| **`article-image-stack`** | **多图布局：row/column/carousel** | `eyebrow, title, layout, images[], slideSeconds?, transition?, source?` |
 
 详见 [references/scene-types.md](references/scene-types.md)。
 
@@ -187,9 +189,8 @@
 | 服务 | 用途 | 配置位置 |
 |---|---|---|
 | ideaflow Article-to-Markdown | 公众号 → markdown | 硬编码在 `fetch_article.py` |
-| MiniMax T2A v2 (`speech-02-hd`) | 配音 | 根目录 `.env` 的 `minimaxi` + `minimaxi-group-id` |
-
-> 注意：TTS 调用脚本 `scripts/generate_tts.py` 当前不存在于 skill，文档与实现脱节（详见 [PROJECT_AUDIT.md 缺失项](#项目状态)）。
+| MiniMax T2A v2 (`speech-02-hd`) | 配音（**可选**） | 根目录 `.env` 的 `minimaxi` + `minimaxi-group-id` |
+| Microsoft Edge TTS | 免费配音降级方案 | 无需凭据，由 `generate_tts.py` 自动探测选择 |
 
 ---
 
@@ -273,14 +274,28 @@ python3 .../generate_tts.py --engine minimax --voice-id female-shaonv ...
 ```
 
 > 三个脚本的详细参数 + 用法见 [scripts/README.md](scripts/README.md)。
->
-> 已知遗留：`SKILL.md` 第 65 行历史引用 `scripts/generate_tts.py`（✅ 2026-08-03 已补完）。
 
 ### 5. 回写字幕 time
 
-把 `work/captions/segments.json` 里每段的 `start` / `end` 拷进 `src/demoData.ts` 的 `captions[]`。
+直接用 `scripts/align_captions.py` 一键生成 `captions[]` 数组：
 
-> **未来改进**：可写一个 `scripts/align_captions.py` 自动转 SRT → `captions[]`（已在 [work/lessons/LESSONS.md](templates/remotion-project/work/lessons/LESSONS.md) 建议）。
+```bash
+# 1. 默认（用 segments.json 推 captions）
+python3 ../.claude/skills/wechat-article-remotion/scripts/align_captions.py \
+  --out-dir . --keywords "edge-tts,MiniMax,免费" --print-totals
+
+# 2. 有 ASR 对齐的 SRT 时（更准）
+python3 .../align_captions.py --srt work/captions/captions.srt --keywords "edge-tts,MiniMax"
+
+# 3. 写到文件（直接替换 demoData.ts 的 captions: [...] 块）
+python3 .../align_captions.py --keywords "edge-tts,MiniMax" --out work/captions/captions-snippet.ts
+```
+
+`align_captions.py` 的特性：
+- 输入：`work/captions/segments.json`（默认）或 `--srt` 指定的 ASR 对齐 SRT
+- keyword 大小写不敏感（"MiniMax" 也能匹配 "minimax"）
+- 自动按中文标点 / 空格切分长段，每段 ≤ 14 字
+- 输出 TypeScript 代码片段，可直接复制粘贴到 `src/demoData.ts` 的 `captions: [...]` 块
 
 ### 6. 渲染
 
@@ -356,7 +371,8 @@ npm run render            # 正式 1080p（仅在用户确认 preview 后再跑�
 | `stat` | `{eyebrow, number, unit, title, metrics[]}` | 巨数字 0.16s → 解释 0.28s → mini 数据 0.52+0.08n s | "95.7%""增长 3 倍" |
 | `compare` | `{eyebrow, heading, choices[]}` | 小标 0.16s → 标题 0.24s → 选项 0.38+0.12n s | "A vs B""开源 vs 闭源" |
 | `outro` | `{eyebrow, title, subtitle}` | 小标 0.16s → 标题 0.24s → 副标 0.48s | 视频最后一帧 |
-| `article-image` | `{eyebrow, imageSrc, imageAspect, title, caption?, source?, appearAt?, titleAppearAt?, captionAppearAt?}` | eyebrow 0.08s → 图 0.16s → 标题 0.24s → caption 0.5s | 截图、表格、流程图、信息图等带文字的图 |
+| `article-image` | `{eyebrow, imageSrc, imageAspect, title, caption?, source?, appearAt?, titleAppearAt?, captionAppearAt?}` | eyebrow 0.08s → 图 0.16s → 标题 0.24s → caption 0.5s | 截图、表格、流程图、信息图等带文字的图（单图） |
+| `article-image-stack` | `{eyebrow, title, layout: row/column/carousel, images[], slideSeconds?, transition?, source?}` | row/column: 每张 0.2s 错开；carousel: 每张 slideSeconds | 同点多图（carousel）、before/after 对比（row）、时间线（column） |
 
 ---
 
@@ -419,20 +435,19 @@ npm run render          # 正式 1080p（仅在用户确认 preview 后再跑）
 
 - ~~❌ `scripts/generate_tts.py` ~~ —— 文档引用了不存在的脚本
    - ✅ **已修复**：抽离为 `scripts/generate_tts_minimax.py` + `scripts/generate_tts_edge_tts.py`（免费方案）+ `scripts/generate_tts.py`（统一入口，自动按 minimax 凭据降级）
-- ❌ `scripts/align_captions.py` —— LESSONS.md 中建议补的"SRT → `captions[]` 转换"工具未实现。
+- ✅ **`scripts/align_captions.py` 已补完**（2026-08-03）：SRT/segments.json → `captions[]` TS 代码片段，keyword accent 大小写不敏感，端到端跑通（3 段 31.56s / 176 字）。
 - ❌ 模板 `public/assets/audio/.gitkeep` 占位存在，但模板 `package.json` 也没声明 `ffmpeg-static` 等系统依赖。
 
 ### 模板小问题
 
 - `.gitkeep` 全空（这是占位文件，正常）
 - 模板 `tsconfig.json` 写死 `"types": ["node"]`，未声明 `@remotion/*` 的类型（Remotion 自己 inject，可忽略）
+- 模板 `package.json` 缺 `engines` 字段（✅ 2026-08-03 已补 `node>=20 / npm>=10`）
 
 ### 建议沉淀到库的新增项
 
-1. **`article-image-stack` 场景**：当前只有单图版本；多图（左/右双联、上下双联）参考 [scene-types.md 第 6 节](references/scene-types.md) 提到的"未来版本"
-2. **真实文章跑通模板**：当前两个 demo 跑通真实公众号 URL，但模板自身只有占位 `img-01.jpg`
-3. **`align_captions.py`**：把 SRT / `segments.json` 自动转成 `captions[]` 数组
-4. **国际化**：按 user_profile 偏好先不做；如果要做，把 `RichText` 抽象成 `<T>` 组件支持多语言 fallback
+1. **真实文章跑通模板**：当前两个 demo 跑通真实公众号 URL，但模板自身只有占位 `img-01.jpg`
+2. **国际化**：按 user_profile 偏好先不做；如果要做，把 `RichText` 抽象成 `<T>` 组件支持多语言 fallback
 
 ---
 

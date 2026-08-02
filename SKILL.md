@@ -95,7 +95,7 @@ npm run still
     · 如果用户满意 preview，无需跑最终版
 ```
 
-## 6 个场景类型
+## 7 个场景类型
 
 | kind | 用途 | 数据关键字段 |
 |---|---|---|
@@ -104,7 +104,8 @@ npm run still
 | `stat` | 数据、金句 | `eyebrow, number, unit, title, metrics[]` |
 | `compare` | 对比、选 A/B | `eyebrow, heading, choices[]` |
 | `outro` | 结尾 CTA | `eyebrow, title, subtitle` |
-| **`article-image`** | **公众号原文图完整展示** | `eyebrow, imageSrc, imageAspect, title, caption?, source?` |
+| **`article-image`** | **公众号原文图完整展示（单图）** | `eyebrow, imageSrc, imageAspect, title, caption?, source?` |
+| **`article-image-stack`** | **多图布局：row/column/carousel** | `eyebrow, title, layout, images[], slideSeconds?, transition?, source?` |
 
 详见 [references/scene-types.md](references/scene-types.md)。
 
@@ -121,8 +122,8 @@ npm run still
    - **尽可能保留正文有用的图片**——内容图、景观图、细节图都该用上；判定为无用（二维码 / 分割线装饰 / 重复 / 模糊缩略图）才能丢，且必须向用户说明丢了几张、为什么
    - 同景点多图必须用 `imageSources[]` 轮播，不要只挑 1 张代表
    - 单图场景停留 ≤ 6s；多图轮播间隔 1.5-3s（更短观感眼花）
-6. **共用 talking-head-remotion 公共素材库** —— 字体/SFX 用 `seed_from_library()` 复制，新动效回流到 `talking-head-remotion/assets/library/animations/`。
-7. **国际化（i18n）先不处理**，按 user_profile 偏好默认中文。
+7. **共用 talking-head-remotion 公共素材库** —— 字体/SFX 用 `seed_from_library()` 复制，新动效回流到 `talking-head-remotion/assets/library/animations/`。
+8. **国际化（i18n）先不处理**，按 user_profile 偏好默认中文。
 
 ## 常用命令
 

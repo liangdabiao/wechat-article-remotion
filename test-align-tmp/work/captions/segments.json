@@ -1,0 +1,28 @@
+{
+  "engine": "edge-tts",
+  "voice": "zh-CN-YunxiNeural",
+  "total": 31.56,
+  "segments": [
+    {
+      "index": 1,
+      "text": "第一段：大家好，欢迎来到这个测试视频。今天我们要聊一聊 edge-tts 工具的实际效果。",
+      "start": 0.0,
+      "duration": 8.328,
+      "end": 8.328
+    },
+    {
+      "index": 2,
+      "text": "第二段：edge-tts 是 Microsoft Edge 浏览器的内置语音合成引擎，由社区 Python 包封装。完全免费，无需 API key。",
+      "start": 8.328,
+      "duration": 11.808,
+      "end": 20.136
+    },
+    {
+      "index": 3,
+      "text": "第三段：如果你有自己的 MiniMax 账号，也可以用 minimax 引擎，音质会更稳定。统一入口会自动探测并选择最合适的引擎。",
+      "start": 20.136,
+      "duration": 11.424,
+      "end": 31.56
+    }
+  ]
+}
