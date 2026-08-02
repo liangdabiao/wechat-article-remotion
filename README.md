@@ -49,7 +49,7 @@
 | Remotion 模板 | ✅ 8 源文件 | `templates/remotion-project/src/{index,Root,ArticleVideo,background,sceneTypes,demoData,shared,theme}.{ts,tsx}` |
 | 公共素材库 | ✅ 跨 skill 共享 | 从 `talking-head-remotion/assets/library/` 播种（9 字体 + 7 SFX） |
 | 端到端验证 | ✅ 2 个 demo | `demo-wx-article`（4 张图，88s 视频）、`demo-wx-llm`（27 张图，12 scene） |
-| TTS 工具脚本 | ⚠️ 文档引用但未沉淀 | `scripts/generate_tts.py` 在 SKILL.md 中被引用但不存在；当前由 `demo-wx-article/scripts/gen_tts_minimax.py` 替代 |
+| TTS 工具脚本 | ✅ 完整（2026-08-03 抽离） | `scripts/generate_tts.py`（统一入口）/ `generate_tts_minimax.py`（MiniMax 实现）/ `generate_tts_edge_tts.py`（edge-tts 免费实现） |
 | 字幕对齐工具 | ⚠️ 文档建议未实现 | `scripts/align_captions.py` 在 LESSONS.md 中建议补；当前手动写 `captions[]` |
 
 > 详细检查结果见 [PROJECT_AUDIT.md](PROJECT_AUDIT.md) 章节末段（与本 README 一同维护）。
@@ -103,9 +103,13 @@
 │   ├── scene-types.md                # 6 场景的 TS 数据模型 + 动效配方
 │   └── beat-checklist.md             # 文章 → 视频 beat 拆稿模板
 │
-├── scripts/                          # 脚手架 + 抓文脚本
+├── scripts/                          # 脚手架 + 抓文 + TTS 工具
 │   ├── scaffold_wechat_article_project.py
-│   └── fetch_article.py
+│   ├── fetch_article.py
+│   ├── generate_tts.py               # ⭐ 统一入口（auto / minimax / edge-tts）
+│   ├── generate_tts_minimax.py       # MiniMax T2A v2 实现（需 key）
+│   ├── generate_tts_edge_tts.py      # edge-tts 免费实现（无需 key）
+│   └── README.md                     # 脚本使用手册
 │
 └── templates/                        # Remotion 模板（被脚手架复制到目标项目）
     └── remotion-project/
@@ -160,11 +164,12 @@
 
 | 包 | 用途 | 引入位置 |
 |---|---|---|
-| `requests` | 调 ideaflow API / 下载原文图 / MiniMax T2A | `fetch_article.py` + demo 内 TTS 脚本 |
+| `requests` | 调 ideaflow API / 下载原文图 / MiniMax T2A | `fetch_article.py` + `generate_tts_minimax.py` |
 | `Pillow` | 读图宽高 + RGBA → RGB 转换 | `fetch_article.py` |
-| `ffmpeg` / `ffprobe` | 量时长 / 拼接 mp3 / 转 m4a | demo 内 TTS 脚本 |
+| `edge-tts` | **免费 TTS 引擎**（无 API key） | `generate_tts_edge_tts.py` |
+| `ffmpeg` / `ffprobe`（系统二进制） | 量时长 / 拼接 mp3 / 转 m4a | 两个 TTS 脚本 |
 
-**未提供 `requirements.txt`** —— 每个脚本 docstring 内自带安装说明。**这是已知缺陷**，详见 [PROJECT_AUDIT.md 改进建议](#已知问题与改进方向)。
+**已提供 [`requirements.txt`](requirements.txt)** —— 公共依赖必装，edge-tts 行注释掉，按需取消注释启用免费方案。
 
 ### 跨 Skill 共享素材
 
@@ -250,22 +255,24 @@ python3 ../.claude/skills/wechat-article-remotion/scripts/fetch_article.py \
 
 ### 4. TTS 配音
 
-**当前实际可用方案**（取自 `demo-wx-article/scripts/gen_tts_minimax.py`）：
+**统一入口** `scripts/generate_tts.py`，**自动按 minimax 凭据探测选择引擎**：
 
 ```bash
-# 把 demo 中验证过的 TTS 脚本拷到新项目
-cp ../demo-wx-article/scripts/gen_tts_minimax.py scripts/
-
-# 准备 TTS 稿（每段一段话）
-# work/source/tts-script.md  ← 由 LLM 生成
-
-python3 scripts/gen_tts_minimax.py \
+# 1. 默认（自动选）
+python3 ../.claude/skills/wechat-article-remotion/scripts/generate_tts.py \
   --script work/source/tts-script.md \
-  --out-dir . \
-  --group-id "$(grep '^minimaxi-group-id=' ../.env | cut -d= -f2)"
+  --out-dir .
+
+# 2. 强制 edge-tts（无需 key）
+python3 .../generate_tts.py --engine edge-tts --voice zh-CN-XiaoxiaoNeural ...
+
+# 3. 强制 minimax
+python3 .../generate_tts.py --engine minimax --voice-id female-shaonv ...
 ```
 
-> **已知缺陷**：`SKILL.md` 第 55 行引用了 `scripts/generate_tts.py`，但该脚本尚未沉淀到 skill。详见 [PROJECT_AUDIT.md 缺失项](#项目状态)。
+> 三个脚本的详细参数 + 用法见 [scripts/README.md](scripts/README.md)。
+>
+> 已知遗留：`SKILL.md` 第 65 行历史引用 `scripts/generate_tts.py`（✅ 2026-08-03 已补完）。
 
 ### 5. 回写字幕 time
 
@@ -303,17 +310,18 @@ npm run render            # 正式 1080p（仅在用户确认 preview 后再跑�
     · 输出 scenes[]、captions[]、chapters[] 到 src/demoData.ts
    │
    ▼
-[3] TTS 配音（脚本不写死，对齐 talking-head-remotion）
-    · 工具任选：直接调 MiniMax T2A v2 / audio-to-subtitles / 用户提供音频
-    · Windows 下避免依赖 audio-to-subtitles 的 `npx -y bun`（FileNotFoundError）
-    · 推荐：直接调 MiniMax T2A v2，hex 解码 `data.audio`（不是 base64/PCM）
+[3] TTS 配音（统一入口 `scripts/generate_tts.py`）
+    · 默认自动按 minimax 凭据探测选择引擎：
+        - 有 minimax 凭据（`../.env` 里有 `minimaxi=` + `minimaxi-group-id=`）→ 用 MiniMax T2A v2
+        - 无 minimax 凭据 → 自动降级到 edge-tts（**免费 / 无需 key**）
+    · 显式：`--engine minimax` 或 `--engine edge-tts`
     · 必须 ffprobe 验证每段 mp3 能解码 + 量时长，否则杂音
-    · 产物归档路径：
+    · 产物归档路径（两个引擎输出格式完全一致）：
         - public/assets/audio/voice.m4a     # 最终 AAC，Remotion 用
         - public/assets/audio/voice.mp3     # 备用
-        - work/audio/generated/segments.json # 每段时长 + 累计起点
-        - work/audio/timeline.json          # 含 offsets/durations/gap/total
-        - work/source/narration.md          # TTS 专用稿（每段一行）
+        - work/captions/segments.json       # 每段时长 + 累计起点 + engine 元信息
+        - work/audio/tts-segments/seg-NN.mp3 # 临时分段
+        - work/source/narration.md          # TTS 专用稿（每段一段）
    │
    ▼
 [4] 用真实音频时长回写 demoData.ts 的 captions time
@@ -405,9 +413,10 @@ npm run render          # 正式 1080p（仅在用户确认 preview 后再跑）
 
 ## 已知问题与改进方向
 
-### 文档 / 实现不一致
+### 文档 / 实现不一致（✅ 2026-08-03 已修复）
 
-- ❌ `scripts/generate_tts.py` —— SKILL.md、模板 README、PROJECT_BRIEF.md 都引用，但**脚本未沉淀**。当前由 `demo-wx-article/scripts/gen_tts_minimax.py` 替代。建议：从该 demo 抽离一份放进 `scripts/generate_tts_minimax.py` 作为官方实现。
+- ~~❌ `scripts/generate_tts.py` ~~ —— 文档引用了不存在的脚本
+   - ✅ **已修复**：抽离为 `scripts/generate_tts_minimax.py` + `scripts/generate_tts_edge_tts.py`（免费方案）+ `scripts/generate_tts.py`（统一入口，自动按 minimax 凭据降级）
 - ❌ `scripts/align_captions.py` —— LESSONS.md 中建议补的"SRT → `captions[]` 转换"工具未实现。
 - ❌ 模板 `public/assets/audio/.gitkeep` 占位存在，但模板 `package.json` 也没声明 `ffmpeg-static` 等系统依赖。
 
@@ -420,9 +429,8 @@ npm run render          # 正式 1080p（仅在用户确认 preview 后再跑）
 
 1. **`article-image-stack` 场景**：当前只有单图版本；多图（左/右双联、上下双联）参考 [scene-types.md 第 6 节](references/scene-types.md) 提到的"未来版本"
 2. **真实文章跑通模板**：当前两个 demo 跑通真实公众号 URL，但模板自身只有占位 `img-01.jpg`
-3. **`requirements.txt`**：在 skill 根目录补一份，把 `requests` / `Pillow` 锁定
-4. **`align_captions.py`**：把 SRT / `segments.json` 自动转成 `captions[]` 数组
-5. **国际化**：按 user_profile 偏好先不做；如果要做，把 `RichText` 抽象成 `<T>` 组件支持多语言 fallback
+3. **`align_captions.py`**：把 SRT / `segments.json` 自动转成 `captions[]` 数组
+4. **国际化**：按 user_profile 偏好先不做；如果要做，把 `RichText` 抽象成 `<T>` 组件支持多语言 fallback
 
 ---
 
