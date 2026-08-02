@@ -460,3 +460,5 @@ npm run still
 ## License
 
 项目内字体（SIL Open Font License）和 SFX（Mixkit License）保留原作者声明。代码部分未声明开源协议，默认仅供内部使用。
+
+感谢 https://linux.do 社区支持
