@@ -2,7 +2,9 @@
 
 > 把任意一篇微信公众号文章（`https://mp.weixin.qq.com/s/...`）转成 Studio 风格的 Remotion 视频 —— 暖白画布 + 上下镜像透视格子 + 顶部章节进度 + 公众号原文图完整保留（`object-fit: contain` 永不裁切）。
 
-这是一个 Claude Skill，定位在 `.claude/skills/` 下，被 Claude Code / Trae IDE / Codex / workbuddy 等支持 Skill 的工具加载并执行端到端 pipeline。
+这是一个 Agent Skill， 被 Claude Code / Trae IDE / Codex / workbuddy 等支持 Skill 的工具加载并执行端到端 pipeline。
+
+![](动画.gif)
 
 ---
 
@@ -17,7 +19,7 @@
 
 在codex,claude code, workbuddy:
 
-❯ paper-cutout-remotion skill 制作： 制作一个纸片风分层动画视频：  苏东坡 赤壁怀古
+❯ wechat-article-remotion skill 制作视频： https://mp.weixin.qq.com/s/oWPVUyjW7TtHauynuTjYjw
 
 
 
