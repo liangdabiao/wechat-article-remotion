@@ -10,6 +10,7 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "typecheck": "tsc --noEmit",
+    "check": "python ../scripts/inspect_video.py --project-dir .",
     "still": "remotion still src/index.ts ArticleVideo renders/frame-030.png --frame=30 --scale=0.25",
     "render:preview": "remotion render src/index.ts ArticleVideo renders/preview-low.mp4 --scale=0.5 --crf=28 --concurrency=2 --overwrite",
     "render": "remotion render src/index.ts ArticleVideo renders/demo.mp4 --concurrency=2"
