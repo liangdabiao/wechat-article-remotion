@@ -1,0 +1,14 @@
+# 公共依赖（两个引擎都需要）
+requests>=2.31,<3.0
+Pillow>=10.0,<12.0
+
+# minimax 引擎：仅依赖 requests（已含）
+
+# edge-tts 引擎（免费方案；自动降级时启用）
+# 取消下面这行注释来启用：
+edge-tts>=6.1,<8.0
+
+# ffmpeg / ffprobe：系统二进制，不通过 pip 装
+# Windows:  choco install ffmpeg
+# macOS:    brew install ffmpeg
+# Linux:    apt install ffmpeg
