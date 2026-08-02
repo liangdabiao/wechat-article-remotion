@@ -56,6 +56,33 @@ def seed_from_library(subdir: str, dest_dir: Path) -> list[str]:
     return copied
 
 
+# 模板里 theme.ts 实际只用 Noto Sans SC 的 400/700/900 三个字重
+# Space Grotesk 留 400/700。其它字重（300/500）每个 10MB+，是冗余的。
+_KEEP_FONTS = {
+    "NotoSansSC-400.ttf",
+    "NotoSansSC-700.ttf",
+    "NotoSansSC-900.ttf",
+    "SpaceGrotesk-400.ttf",
+    "SpaceGrotesk-500.ttf",
+    "SpaceGrotesk-600.ttf",
+    "SpaceGrotesk-700.ttf",
+}
+
+
+def seed_fonts_filtered(dest_dir: Path) -> list[str]:
+    """只复制主题用到的字重，避免 5 个 NotoSansSC 50MB 全部塞进 public。"""
+    source_dir = LIBRARY_DIR / "fonts"
+    copied: list[str] = []
+    if not source_dir.exists():
+        return copied
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for src in sorted(source_dir.iterdir()):
+        if src.is_file() and src.name in _KEEP_FONTS:
+            shutil.copy2(src, dest_dir / src.name)
+            copied.append(src.name)
+    return copied
+
+
 def ffprobe_duration(path: str) -> float | None:
     if not path:
         return None
@@ -128,7 +155,7 @@ def main() -> None:
             duration = probed
     duration = round(float(duration), 3)
 
-    seeded_fonts = seed_from_library("fonts", project / "public/assets/fonts")
+    seeded_fonts = seed_fonts_filtered(project / "public/assets/fonts")
     seeded_sfx = seed_from_library("sfx", project / "public/assets/audio")
 
     replacements = {
