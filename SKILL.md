@@ -12,7 +12,7 @@ description: 用 Remotion 把任意一篇微信公众号文章（mp.weixin.qq.co
 - 暖白画布 `#f7f8f3` + 上下镜像透视格子背景
 - 顶部黑色章节进度条（白色填充）
 - 底部无底色黑字字幕，关键词蓝色 `#2f6fff` 强调
-- 默认画幅 1920×1080 @ 30fps 横屏
+- 默认画幅 **1080×1920 @ 30fps 竖屏**（适配公众号图文、抖音/小红书/视频号）
 - **公众号图片永远 `object-fit: contain`，永不裁切**（铁律）
 
 与 [talking-head-remotion](../talking-head-remotion/SKILL.md) 的差异：

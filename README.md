@@ -66,7 +66,7 @@ https://www.bilibili.com/video/BV1LMKJ6cEwb/?vd_source=86926e418c83af75f6850b554
 - **暖白画布** `#f7f8f3` + 上下镜像透视格子背景（SVG 实时绘制）
 - **顶部黑色章节进度条**（白色填充、章节名字高亮）
 - **底部无底色黑字字幕**（关键词蓝色 `#2f6fff` 强调）
-- **默认画幅 1920×1080 @ 30fps 横屏**
+- **默认画幅 1080×1920 @ 30fps 竖屏**（适配公众号图文、抖音/小红书/视频号）
 - **完全无 PIP** —— 主舞台让给公众号原文图（与 talking-head-remotion 的最大差异）
 
 ### 场景
@@ -428,7 +428,7 @@ npm run render          # 正式 1080p（仅在用户确认 preview 后再跑）
 
 ### 渲染调试节奏
 
-- 默认先出低清 proof（`npm run render:preview`），不要一上来跑 1920×1080 全片。
+- 默认先出低清 proof（`npm run render:preview`），不要一上来跑 1080×1920 全片。
 - preview 完成后，**必须先向用户展示结果，询问是否需要最终版**，得到确认后才跑 `npm run render`。禁止自动推进到最终渲染。
 - 长渲染把输出重定向到 `work/render.log`，只 tail 日志尾部。
 - 用户打断后先检查后台进程：`pgrep -fl "remotion|chrome-headless|Google Chrome for Testing|Chromium"`。

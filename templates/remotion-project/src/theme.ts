@@ -49,13 +49,12 @@ export const fonts = {
 };
 
 export const layout = {
-  width: 1920,
-  height: 1080,
+  width: 1080,
+  height: 1920,
   fps: 30,
-  topbarHeight: 68,
-  // 没 PIP，bottom 可以压得更低，主舞台让给图片
-  safeTop: 196,
-  safeX: 120,
-  safeBottom: 180,
-  captionBottom: 88,
+  topbarHeight: 60,
+  safeTop: 160,
+  safeX: 80,
+  safeBottom: 140,
+  captionBottom: 100,
 };

@@ -440,37 +440,37 @@ const ArticleImageSceneView = ({scene}: {scene: ArticleImageScene}) => {
   const {fps} = useVideoConfig();
 
   // 铁律：object-fit: contain，永不 cover
-  // 宽高比决定 max-width 还是 max-height 优先
-  // 注意：maxHeight 用 calc(100% - X) 而不是 78vh，避免在紧凑布局里溢出 frame
-  // 标题(~80) + caption(~50) + eyebrow(~50) + 间距(36) ≈ 216，需要从高度里让出
   const isWideImage = scene.imageAspect >= 1.78;
   const imageSizeStyle: CSSProperties = isWideImage
-    ? {maxWidth: "88%", maxHeight: "calc(100% - 16px)", width: "auto", height: "auto"}
-    : {maxHeight: "calc(100% - 16px)", maxWidth: "88%", width: "auto", height: "auto"};
+    ? {maxWidth: "96%", maxHeight: "100%", width: "auto", height: "auto"}
+    : {maxHeight: "100%", maxWidth: "96%", width: "auto", height: "auto"};
 
   // 持续动效：图源标签 6s 呼吸一次
   const sourceGlow = 0.6 + Math.sin((frame / fps) * (Math.PI / 3)) * 0.4;
 
+  // 竖屏布局：标题在上 → 图片居中占满 → caption 在下
   return (
-    <div style={{...sceneContentStyle, ...articleImageLayoutStyle}}>
-      <div style={articleImageHeaderStyle}>
+    <div style={{...sceneContentStyle, ...articleImageVerticalLayoutStyle}}>
+      {/* 上方：eyebrow + title */}
+      <div style={articleImageVerticalHeaderStyle}>
         <Eyebrow style={enterStyle(frame, fps, scene.appearAt ?? 0.08, 0.34, 12)}>
           {scene.eyebrow}
         </Eyebrow>
         <h2
           style={{
-            ...articleImageTitleStyle,
-            ...enterStyle(frame, fps, scene.titleAppearAt ?? 0.24, 0.5, 24),
+            ...articleImageVerticalTitleStyle,
+            ...enterStyle(frame, fps, scene.titleAppearAt ?? 0.2, 0.5, 20),
           }}
         >
           <RichText parts={scene.title} strong />
         </h2>
       </div>
 
+      {/* 中间：图片占满剩余空间 */}
       <div
         style={{
           ...articleImageFrameStyle,
-          ...enterStyle(frame, fps, scene.appearAt ?? 0.16, 0.6, 16),
+          ...enterStyle(frame, fps, scene.appearAt ?? 0.08, 0.6, 16),
         }}
       >
         <Img
@@ -484,10 +484,11 @@ const ArticleImageSceneView = ({scene}: {scene: ArticleImageScene}) => {
         ) : null}
       </div>
 
+      {/* 下方：caption */}
       {scene.caption ? (
         <div
           style={{
-            ...articleImageCaptionStyle,
+            ...articleImageVerticalCaptionStyle,
             ...enterStyle(frame, fps, scene.captionAppearAt ?? 0.5, 0.4, 14),
           }}
         >
@@ -552,7 +553,7 @@ const ImageStackSlotView = ({
         ) : null}
       </div>
       {showCaption && slot.caption ? (
-        <div style={articleImageCaptionStyle}>{slot.caption}</div>
+        <div style={articleImageVerticalCaptionStyle}>{slot.caption}</div>
       ) : null}
     </div>
   );
@@ -571,7 +572,7 @@ const ArticleImageStackSceneView = ({scene}: {scene: ArticleImageStackScene}) =>
 
   return (
     <div style={{...sceneContentStyle, ...articleImageStackLayoutStyle}}>
-      <div style={articleImageHeaderStyle}>
+      <div style={articleImageStackHeaderStyle}>
         <Eyebrow style={enterStyle(frame, fps, scene.appearAt ?? 0.08, 0.34, 12)}>
           {scene.eyebrow}
         </Eyebrow>
@@ -1010,28 +1011,11 @@ const outroSubtitleStyle: CSSProperties = {
   letterSpacing: 0,
 };
 
-// Article-image（核心新增）
-const articleImageLayoutStyle: CSSProperties = {
+// Article-image（竖屏布局：图片在上占满全高，标题在下方）
+const articleImageVerticalLayoutStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "flex-start",
   textAlign: "center",
-};
-const articleImageHeaderStyle: CSSProperties = {
-  width: "100%",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  marginBottom: 18,
-};
-const articleImageTitleStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 1500,
-  margin: 0,
-  color: colors.ink,
-  fontSize: 64,
-  fontWeight: 800,
-  lineHeight: 1.2,
-  letterSpacing: 0,
 };
 const articleImageFrameStyle: CSSProperties = {
   position: "relative",
@@ -1064,19 +1048,46 @@ const imageSourceBadgeStyle: CSSProperties = {
   fontWeight: 500,
   letterSpacing: 0.4,
 };
-const articleImageCaptionStyle: CSSProperties = {
-  marginTop: 20,
+const articleImageVerticalHeaderStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  marginBottom: 14,
+  flexShrink: 0,
+};
+const articleImageVerticalTitleStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 920,
+  margin: 0,
+  color: colors.ink,
+  fontSize: 48,
+  fontWeight: 800,
+  lineHeight: 1.2,
+  letterSpacing: 0,
+};
+const articleImageVerticalCaptionStyle: CSSProperties = {
+  marginTop: 10,
   color: colors.muted,
-  fontSize: 26,
+  fontSize: 24,
   fontWeight: 400,
   letterSpacing: 0,
-  maxWidth: 1200,
+  maxWidth: 800,
 };
 
 // Article-image-stack（多图布局）
 const articleImageStackLayoutStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "flex-start",
+  textAlign: "center",
+};
+const articleImageStackHeaderStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  marginBottom: 14,
+};
   textAlign: "center",
 };
 const articleImageStackTitleStyle: CSSProperties = {

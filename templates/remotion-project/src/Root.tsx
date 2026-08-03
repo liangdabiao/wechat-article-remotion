@@ -10,8 +10,8 @@ export const RemotionRoot = () => {
         component={ArticleVideo}
         durationInFrames={Math.round(demoProject.durationSeconds * demoProject.fps)}
         fps={demoProject.fps}
-        width={1920}
-        height={1080}
+        width={1080}
+        height={1920}
         defaultProps={demoProject satisfies ArticleVideoProps}
       />
     </Folder>
