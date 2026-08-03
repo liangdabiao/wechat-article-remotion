@@ -64,31 +64,86 @@ def extract_image_urls(md: str) -> list[str]:
 
 
 def extract_image_captions(md: str) -> dict[str, str]:
-    """对每个图 URL，提取其在 markdown 里紧接着的第一个非空行作为 caption。
+    """对每个图 URL，提取其所属段落作为 caption。
 
-    公众号文章里图片后通常有一行 "xxx・图来自@yyy"，是判断图归属/丢留的关键信号。
+    ★★★ 核心规则：公众号文章的图文结构是「一段介绍 + 一张配图」，
+    图片说明行（如 "👇🏼韶关南雄珠玑古巷"）出现在图片正前方，
+    图片后的非空行是下一话题的段落，不是当前图的 caption。
+    因此必须向上（图片前）扫描，而非向下。
+
+    优先级：
+      1. 图片紧上方的「图片说明行」（如 "👇🏼xxx"、"📷xxx"、emoji 开头的短行）
+      2. 图片说明行再往上的「正文段落」（该图真正归属的内容段）
     返回 {url: caption}；caption 为空字符串表示无可用 caption。
     """
     lines = md.split("\n")
     url_to_caption: dict[str, str] = {}
+
+    def is_image_label(line_text: str) -> bool:
+        """判断是否是图片说明行（如 👇🏼韶关南雄珠玑古巷 / 📷xxx / 图x：xxx）。"""
+        stripped = line_text.strip()
+        if not stripped:
+            return False
+        # 以常见 emoji/符号开头的短行（≤40字）通常是图片说明
+        # 用实际 emoji 字符匹配，不用 \u{} 转义（Python re 不支持）
+        if len(stripped) <= 40 and re.match(
+            r"^[" + "\U0001F300-\U0001F9FF\U00002600-\U000027BF" + "👇🏼📷▶▶️✅❌⭐💡📌📊🎬🔥📢✨👍👇▲]",
+            stripped,
+        ):
+            return True
+        # "图X" / "图片" 开头的短标注
+        if len(stripped) <= 40 and re.match(r"^(图\s*\d|图片|fig\.|Figure)", stripped, re.IGNORECASE):
+            return True
+        return False
+
+    def is_content_line(line_text: str) -> bool:
+        """判断是否是有意义的正文行（排除纯标点、空行、图片行）。"""
+        stripped = line_text.strip()
+        if not stripped:
+            return False
+        if stripped.startswith("!["):
+            return False
+        # 纯标点/分隔符不算有意义内容
+        if len(stripped) <= 3:
+            return False
+        if re.fullmatch(r"[\s\-·、|!！?？…—\-]+$", stripped):
+            return False
+        return True
+
     for i, line in enumerate(lines):
         m = re.search(r"!\[[^\]]*\]\(([^)]+)\)", line)
         if not m:
             continue
         url = m.group(1).strip()
-        # 找紧随的非空、非图片、非纯空白行
-        cap = ""
-        for j in range(i + 1, min(i + 6, len(lines))):
+
+        # === 向上扫描（图片前的行）===
+        # 先找紧上方的图片说明行（👇🏼xxx），再找说明行前的正文段落
+        # ★ 关键：遇到前一张图片行（![）时不要 break，而是跳过它继续向上——
+        #   多张连续图属于同一段落，跳过中间的图片行才能找到共同所属段落
+        image_label = ""
+        parent_paragraph = ""
+        for j in range(i - 1, max(i - 15, -1), -1):
             cand = lines[j].strip()
             if not cand:
                 continue
             if cand.startswith("!["):
-                break  # 下一张图，放弃
-            # 跳过纯标点/分隔符
-            if len(cand) >= 2 and not re.fullmatch(r"[\s\-·、|]+", cand):
-                cap = cand
-                break
+                continue  # 上一张图，跳过（不 break，继续向上找共同段落）
+            if is_image_label(cand) and not image_label and not parent_paragraph:
+                image_label = cand
+                continue
+            if is_content_line(cand):
+                parent_paragraph = cand
+                break  # 找到正文段落即停
+
+        # 组合 caption：优先 "说明行"（如 👇🏼韶关南雄珠玑古巷），
+        # 次选正文段落，两者都有时用说明行（更精炼）
+        cap = image_label if image_label else parent_paragraph
         url_to_caption[url] = cap
+
+        # 同时记录所属段落到额外的 context 字段（供 LLM 参考）
+        if parent_paragraph and parent_paragraph != cap:
+            url_to_caption[f"{url}__context"] = parent_paragraph
+
     return url_to_caption
 
 
@@ -168,6 +223,8 @@ def main() -> None:
         with Image.open(jpg_path) as im:
             w, h = im.size
         aspect = round(w / h, 4) if h else 0
+        caption_text = url_to_caption.get(url, "")
+        context_text = url_to_caption.get(f"{url}__context", "")
         images.append(
             {
                 "index": idx,
@@ -176,12 +233,14 @@ def main() -> None:
                 "width": w,
                 "height": h,
                 "imageAspect": aspect,
-                "caption": url_to_caption.get(url, ""),
+                "caption": caption_text,
+                "context": context_text,
                 "sourceUrl": url,
             }
         )
-        cap_preview = url_to_caption.get(url, "")[:40]
-        print(f"  ✓ {jpg_path.name}  {w}x{h}  aspect={aspect}  cap={cap_preview!r}")
+        cap_preview = caption_text[:40]
+        ctx_preview = context_text[:40] if context_text else "-"
+        print(f"  ✓ {jpg_path.name}  {w}x{h}  aspect={aspect}  cap={cap_preview!r}  ctx={ctx_preview!r}")
 
     print("[4/4] 写 images.json")
     (source_dir / "images.json").write_text(

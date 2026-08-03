@@ -274,3 +274,32 @@ Pillow>=10.0
 - `README.md`：项目状态 + 场景表 + 动效词汇 + 6 场景表 + 已知问题都同步
 - `templates/remotion-project/work/lessons/LESSONS.md` 移除"建议补 article-image-stack"项，改记为已完成
 - 端到端验证：`test-align-tmp/test-sandbox/` 跑 `npm install` + `npm run typecheck` **0 错误**
+
+### 2026-08-03（v5：修复图文对应错位 bug ★★★）
+
+**事故**：`extract_image_captions()` 向下扫描（图片后第一行），导致 `images.json` 的 `caption` 全部错位一位。img-01（珠玑古巷，属于陈姓段落）被标为黄姓，后续所有图文均错位。
+
+**根因**：公众号文章的常见结构是「一段介绍 + 一张配图」，图片说明行（如 `👇🏼韶关南雄珠玑古巷`）在图片正前方。原代码 `range(i + 1, ...)` 向图片后扫描，拿到的是下一个话题的段落。
+
+**图文映射规则**（沉淀进 SKILL.md / beat-checklist.md / README.md / LESSONS.md）：
+- 公众号文章常见结构是「一段介绍 + 一张配图」，图片属于其前面紧邻的段落，不是后面的
+- 图文**不要求一一对应**：某段没配图，视频里就不硬配图，用 list / stat 等非图片场景
+- 某段有多张图，就用轮播（`article-image-stack` 的 `carousel` 布局）
+- 按原文实际情况来，不要为了凑数硬配或丢图
+
+**修复**：
+- `scripts/fetch_article.py`：`extract_image_captions()` 改为向上扫描（`range(i - 1, ...)`），先找图片说明行，再找所属正文段落；新增 `context` 字段存储所属段落全文
+- `SKILL.md` / `README.md` 硬规则 #6 同步：从「图后第一行通常是 caption」改为「图属于其前一段」+ 图文映射规则
+- `references/beat-checklist.md` 步骤 3 增加「★★★ 图文映射规则」，步骤 5 自检增加 2 项图文映射检查
+- `images.json` 新增 `context` 字段（当 `caption` 是图片说明行时，`context` 为所属正文段落）
+
+### 2026-08-03（v6：修复多图 caption 丢失 + 音画对应经验）
+
+**bug**：v5 的向上扫描遇到前一张图片行（`![`）时直接 `break`，导致「一段多图」场景里第 2+ 张图拿不到所属段落（caption 为空）。多图本应属于同一段落，应跳过图片行继续向上找。
+
+**修复**：`fetch_article.py` 第 127 行 `break` → `continue`，遇到前一张图时跳过它继续向上扫描。扫描窗口从 10 行扩到 15 行。
+
+**音画对应经验**（沉淀进 beat-checklist.md 步骤 5 自检）：
+- 场景内容（画面显示什么姓氏/主题）必须与该时间段落的口播内容一致
+- 如果音频某段没讲到某个主题，不要给那个时间段配不相关的场景
+- 拆稿后应逐段核对：音频段落[i] 讲的内容 ↔ 场景[i] 显示的内容 是否匹配

@@ -383,11 +383,18 @@ npm run render            # 正式 1080p（仅在用户确认 preview 后再跑�
 3. **逐元素进场**：`article-image` 场景里图片 / 标题 / 解读 / 图源各有 `appearAt`，错开 0.18s 进场。
 4. **数据驱动**：`demoData.ts` 是唯一真相，component 内不写死画面。
 5. **音画强同步**：用「前 1s / 后 0.5s 双帧」抽帧审计，关键词不能先于字幕。
-6. **图片不随意丢**（防丢图铁律）：
+6. **图文映射规则**（★★★ 曾因搞反导致图文错位 bug）：
+   - **公众号文章的常见结构是「一段介绍 + 一张配图」，图片属于其前面紧邻的段落，不是后面的。** 牢记这个结构，避免把图配到下一个章节。
+   - `fetch_article.py` 已实现向上扫描：先找图片说明行（如 `👇🏼韶关南雄珠玑古巷`），再找所属正文段落
+   - `images.json` 新增 `context` 字段：当 `caption` 是图片说明行时，`context` 存储所属正文段落全文
    - 写 `demoData.ts` 前必须先 `ls public/assets/article-images/` 看实际下载了多少张
-   - 必须读 `work/source/article.md` 把每张图映射到所属章节（图后第一行通常是 caption，如"陈白沙祠・图来自@xxx"）
+   - 必须读 `work/source/article.md` 把每张图映射到所属章节：
+     - 在 `article.md` 中找到每个 `![...](url)` 的位置
+     - 该图片属于其**前一个**非空正文段落（向上找，不是向下）
+     - `images.json` 的 `caption` / `context` 字段可作为辅助参考，但最终以 `article.md` 中的实际位置为准
+   - **图文不是必须一一对应**：某段文字在原文没配图，视频里就不要硬配图，用 `list` / `stat` 等非图片场景展示
+   - **某段有多张图就用轮播**（`article-image-stack` 的 `carousel` 布局），不要只挑 1 张代表
    - **尽可能保留正文有用的图片**——内容图、景观图、细节图都该用上；判定为无用（二维码 / 分割线装饰 / 重复 / 模糊缩略图）才能丢，且必须向用户说明丢了几张、为什么
-   - 同景点多图必须用 `imageSources[]` 轮播，不要只挑 1 张代表
    - 单图场景停留 ≤ 6s；多图轮播间隔 1.5-3s（更短观感眼花）
 7. **共用 talking-head-remotion 公共素材库** —— 字体/SFX 用 `seed_from_library()` 复制，新动效回流到 `talking-head-remotion/assets/library/animations/`。
 8. **国际化（i18n）先不处理**，按 user_profile 偏好默认中文。
